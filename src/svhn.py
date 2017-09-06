@@ -14,7 +14,7 @@ class SVHN:
         self.train_data = self.__store_data(train['X'].astype("float32"), self.train_examples, gray)
 
         # Load Test Set
-        test = sio.loadmat("../res/test_32x32.mat")
+        test = sio.loadmat(file_path + "/test_32x32.mat")
         self.test_labels = self.__one_hot_encode(test['y'])
         self.test_examples = test['X'].shape[3]
         self.test_data = self.__store_data(test['X'].astype("float32"), self.test_examples, gray)

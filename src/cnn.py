@@ -1,7 +1,8 @@
 import tensorflow as tf
-from svhn import SVHN
 import matplotlib.pyplot as plt
 import numpy as np
+import time
+from src.svhn import SVHN
 
 # Parameters
 learning_rate = 0.001
@@ -41,7 +42,7 @@ def max_pool(x):
 
 
 # Load data
-svhn = SVHN("../res", n_classes, use_extra=True, gray=False)
+svhn = SVHN("../res/cropped", n_classes, use_extra=True, gray=False)
 
 # Create the model
 X = tf.placeholder(tf.float32, [None, image_size, image_size, channels])
@@ -112,6 +113,9 @@ optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(Y, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+# Start counting execution time
+start_time = time.time()
+
 with tf.Session() as sess:
     # Initialize Tensorflow variables
     sess.run(tf.global_variables_initializer())
@@ -147,7 +151,7 @@ with tf.Session() as sess:
             train_losses.append(_cost)
 
     # Test the model by measuring it's accuracy
-    test_iterations = svhn.test_examples / batch_size + 1
+    test_iterations = svhn.test_examples // batch_size + 1
     for i in range(test_iterations):
         batch_x, batch_y = (svhn.test_data[i * batch_size:(i + 1) * batch_size],
                             svhn.test_labels[i * batch_size:(i + 1) * batch_size])
@@ -155,6 +159,9 @@ with tf.Session() as sess:
         test_accuracies.append(_accuracy)
         test_losses.append(_cost)
     print("Mean Test Accuracy: {0:5f}, Mean Test Loss: {1:5f}".format(np.mean(test_accuracies), np.mean(test_losses)))
+
+    # print execution time
+    print("Execution time in seconds: " + str(time.time() - start_time))
 
     # Plot batch accuracy and loss for both train and test sets
     plt.style.use("ggplot")
@@ -188,7 +195,7 @@ with tf.Session() as sess:
     ax[1, 1].set_ylim([0, max(test_losses)])
     ax[1, 1].plot(range(0, test_iterations), test_losses, linewidth=1, color="darkred")
 
-    for i in range(1, iterations, svhn.train_examples / batch_size):
+    for i in range(1, iterations, svhn.train_examples // batch_size):
         ax[0, 0].axvline(x=i, ymin=0, ymax=1.05, linewidth=2, color="orange", label="skdlhv")
         ax[0, 1].axvline(x=i, ymin=0, ymax=max(train_losses), linewidth=2, color="orange")
 
