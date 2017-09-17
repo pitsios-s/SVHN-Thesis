@@ -7,7 +7,7 @@ class SVHN:
     def __init__(self, file_path, n_classes, use_extra=False, gray=False):
         self.n_classes = n_classes
 
-        # # Load Train Set
+        # Load Train Set
         train = sio.loadmat(file_path + "/train_32x32.mat")
         self.train_labels = self.__one_hot_encode(train['y'])
         self.train_examples = train['X'].shape[3]

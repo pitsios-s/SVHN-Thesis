@@ -1,5 +1,7 @@
 import tensorflow as tf
-from svhn import SVHN
+from src.svhn import SVHN
+import time
+
 
 # Parameters
 learning_rate = 0.001
@@ -16,7 +18,7 @@ normalization_offset = 0.0  # beta
 normalization_scale = 1.0  # gamma
 normalization_epsilon = 0.001  # epsilon
 
-svhn = SVHN("../res", n_classes, use_extra=True, gray=False)
+svhn = SVHN("../res/cropped", n_classes, use_extra=True, gray=False)
 
 
 # tf Graph input
@@ -83,6 +85,8 @@ optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 # Initializing the variables
 init = tf.global_variables_initializer()
 
+# Start counting execution time
+start_time = time.time()
 
 # Launch the graph
 with tf.Session() as sess:
@@ -118,3 +122,6 @@ with tf.Session() as sess:
                 "{:.6f}".format(test_acc)
             )
     print("Optimization Finished!")
+
+    # print execution time
+    print("Execution time in seconds: " + str(time.time() - start_time))
