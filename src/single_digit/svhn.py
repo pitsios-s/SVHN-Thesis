@@ -66,4 +66,4 @@ class SVHN:
         return np.asarray(d)
 
     def __rgb2gray(self, rgb):
-        return np.dot(rgb[..., :3], [0.299, 0.587, 0.114])
+        return np.expand_dims(np.dot(rgb, [0.2989, 0.5870, 0.1140]), axis=3)

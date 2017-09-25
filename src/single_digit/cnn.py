@@ -1,8 +1,9 @@
-import tensorflow as tf
+import time
 import matplotlib.pyplot as plt
 import numpy as np
-import time
-from src.svhn import SVHN
+import tensorflow as tf
+
+from src.single_digit.svhn import SVHN
 
 # Parameters
 learning_rate = 0.001
@@ -14,11 +15,11 @@ display_step = 1000
 channels = 3
 image_size = 32
 n_classes = 10
-dropout = 0.8
+dropout = 0.85
 hidden = 128
-depth_1 = 16
-depth_2 = 32
-depth_3 = 64
+depth_1 = 32
+depth_2 = 64
+depth_3 = 128
 filter_size = 5
 normalization_offset = 0.0  # beta
 normalization_scale = 1.0  # gamma
@@ -41,8 +42,12 @@ def max_pool(x):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
 
 
+def avg_pool(x):
+    return tf.nn.avg_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
+
+
 # Load data
-svhn = SVHN("../res/cropped", n_classes, use_extra=True, gray=False)
+svhn = SVHN("../../res/cropped", n_classes, use_extra=True, gray=False)
 
 # Create the model
 X = tf.placeholder(tf.float32, [None, image_size, image_size, channels])
@@ -81,17 +86,17 @@ def cnn(x):
     # Convolution 1 -> RELU -> Max Pool
     convolution1 = convolution(x, weights["layer1"])
     relu1 = tf.nn.relu(convolution1 + biases["layer1"])
-    maxpool1 = max_pool(relu1)
+    maxpool1 = avg_pool(relu1)
 
     # Convolution 2 -> RELU -> Max Pool
     convolution2 = convolution(maxpool1, weights["layer2"])
     relu2 = tf.nn.relu(convolution2 + biases["layer2"])
-    maxpool2 = max_pool(relu2)
+    maxpool2 = avg_pool(relu2)
 
     # Convolution 3 -> RELU -> Max Pool
     convolution3 = convolution(maxpool2, weights["layer3"])
     relu3 = tf.nn.relu(convolution3 + biases["layer3"])
-    maxpool3 = max_pool(relu3)
+    maxpool3 = avg_pool(relu3)
 
     # Fully Connected Layer
     shape = maxpool3.get_shape().as_list()
@@ -112,6 +117,15 @@ cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y, logits=y
 optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(Y, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
+# Store scalars for accuracy and loss
+tf.summary.scalar('accuracy', accuracy)
+tf.summary.scalar('loss', cost)
+
+# Writers for storing tensorboard statistics
+merged = tf.summary.merge_all()
+train_writer = tf.summary.FileWriter("../../logs/train")
+test_writer = tf.summary.FileWriter("../../logs/test")
 
 # Start counting execution time
 start_time = time.time()
@@ -145,23 +159,28 @@ with tf.Session() as sess:
         sess.run(optimizer, feed_dict={X: batch_x, Y: batch_y, keep_prob: dropout})
 
         if (i + 1) % display_step == 0 or i == 0:
-            _accuracy, _cost = sess.run([accuracy, cost], feed_dict={X: batch_x, Y: batch_y, keep_prob: 1.0})
+            _accuracy, _cost, _summary = sess.run([accuracy, cost, merged],
+                                                  feed_dict={X: batch_x, Y: batch_y, keep_prob: 1.0})
             print("Step: {0:6d}, Training Accuracy: {1:5f}, Batch Loss: {2:5f}".format(i + 1, _accuracy, _cost))
             train_accuracies.append(_accuracy)
             train_losses.append(_cost)
+            train_writer.add_summary(_summary, i)
 
     # Test the model by measuring it's accuracy
     test_iterations = svhn.test_examples // batch_size + 1
     for i in range(test_iterations):
         batch_x, batch_y = (svhn.test_data[i * batch_size:(i + 1) * batch_size],
                             svhn.test_labels[i * batch_size:(i + 1) * batch_size])
-        _accuracy, _cost = sess.run([accuracy, cost], feed_dict={X: batch_x, Y: batch_y, keep_prob: 1.0})
+        _accuracy, _cost, _summary = sess.run([accuracy, cost, merged],
+                                              feed_dict={X: batch_x, Y: batch_y, keep_prob: 1.0})
         test_accuracies.append(_accuracy)
         test_losses.append(_cost)
+        test_writer.add_summary(_summary, i)
     print("Mean Test Accuracy: {0:5f}, Mean Test Loss: {1:5f}".format(np.mean(test_accuracies), np.mean(test_losses)))
 
     # print execution time
     print("Execution time in seconds: " + str(time.time() - start_time))
+    train_writer.close()
 
     # Plot batch accuracy and loss for both train and test sets
     plt.style.use("ggplot")
@@ -181,7 +200,7 @@ with tf.Session() as sess:
     ax[0, 1].set_ylim([0, max(train_losses)])
     ax[0, 1].plot(range(0, iterations + 1, display_step), train_losses, linewidth=1, color="darkred")
 
-    # TestAccuracy
+    # Test Accuracy
     ax[1, 0].set_title("Test Accuracy per Batch")
     ax[1, 0].set_xlabel("Batch")
     ax[1, 0].set_ylabel("Accuracy")

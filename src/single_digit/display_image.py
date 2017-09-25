@@ -8,7 +8,7 @@ def rgb2gray(rgb):
 
 
 # Read .mat file
-mat = sio.loadmat("../res/cropped/train_32x32.mat")
+mat = sio.loadmat("../../res/cropped/train_32x32.mat")
 mat_gray = rgb2gray(mat['X'][:, :, :, 0])
 
 

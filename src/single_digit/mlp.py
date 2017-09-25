@@ -1,7 +1,8 @@
-import tensorflow as tf
-from src.svhn import SVHN
 import time
 
+import tensorflow as tf
+
+from src.single_digit.svhn import SVHN
 
 # Parameters
 learning_rate = 0.001
