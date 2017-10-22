@@ -40,9 +40,9 @@ class SVHN:
                 An array of one-hot encoded items
         """
         n = data.shape[0]
-        one_hot = np.zeros(shape=(data.shape[0], self.n_classes))
+        one_hot = np.zeros(shape=(data.shape[0], self.n_classes), dtype=np.int32)
         for s in range(n):
-            temp = np.zeros(self.n_classes)
+            temp = np.zeros(self.n_classes, dtype=np.int32)
 
             num = data[s][0]
             if num == 10:
