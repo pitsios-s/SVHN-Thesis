@@ -90,7 +90,9 @@ class SVHNMulti:
         """Loops through every image and returns a large array containing the structure of each one"""
         structs = []
         for i in range(len(self.digit_struct_name)):
-            structs.append(self.get_digit_structure(i))
+            structure = self.get_digit_structure(i)
+            if len(structure["label"]) <= self.MAX_LABELS:
+                structs.append(structure)
         return structs
 
     def save_data(self, data, labels, name):
@@ -152,8 +154,8 @@ class SVHNMulti:
         structs = self.read_digit_structure(data_dir)
         data_count = len(structs)
 
-        image_data = np.zeros((data_count, self.OUT_HEIGHT, self.OUT_WIDTH, self.NUM_CHANNELS), dtype='float32')
-        labels = np.zeros((data_count, self.MAX_LABELS + 1, self.NUM_LABELS), dtype='int8')
+        image_data = np.zeros((data_count, self.OUT_HEIGHT, self.OUT_WIDTH, self.NUM_CHANNELS), dtype=np.float32)
+        labels = np.zeros((data_count, self.MAX_LABELS, self.NUM_LABELS), dtype=np.int32)
 
         for i in range(data_count):
             lbls = structs[i]['label']
@@ -162,9 +164,9 @@ class SVHNMulti:
             left = structs[i]['left']
             height = structs[i]['height']
             width = structs[i]['width']
-            if len(lbls) < self.MAX_LABELS:
-                labels[i] = self.create_label_array(lbls)
-                image_data[i] = self.create_image_array(file_name, top, left, height, width)
+
+            labels[i] = self.create_label_array(lbls)
+            image_data[i] = self.create_image_array(file_name, top, left, height, width)
 
         return image_data, labels
 
@@ -178,14 +180,13 @@ class SVHNMulti:
             An array of one-hot-encoded representations, for every digit in the input label
         """
         num_digits = len(labels)
-        labels_array = np.ones([self.MAX_LABELS + 1], dtype=int) * 10
-        one_hot_labels = np.zeros((self.MAX_LABELS + 1, self.NUM_LABELS), dtype='int8')
-        labels_array[0] = num_digits
+        labels_array = np.ones([self.MAX_LABELS], dtype=np.int32) * 10
+        one_hot_labels = np.zeros((self.MAX_LABELS, self.NUM_LABELS), dtype=np.int32)
 
         for n in range(num_digits):
             if labels[n] == 10:
                 labels[n] = 0
-            labels_array[n + 1] = labels[n]
+            labels_array[n] = labels[n]
 
         for n in range(len(labels_array)):
             one_hot_labels[n] = self.one_hot_encode(labels_array[n])
@@ -199,7 +200,7 @@ class SVHNMulti:
         Returns:
             The one-hot representation of the given number as a numpy array
         """
-        one_hot = np.zeros(shape=self.NUM_LABELS)
+        one_hot = np.zeros(shape=self.NUM_LABELS, dtype=np.int32)
         one_hot[number] = 1
 
         return one_hot
@@ -255,7 +256,7 @@ class SVHNMulti:
 
 
 def main():
-    svhn = SVHNMulti("../../res/processed")
+    svhn = SVHNMulti("../../res/processed/normalized", max_labels=2, normalize=True, gray=False)
 
     # Train dataset
     train_data, train_labels = svhn.process_file("../../res/original/train")
