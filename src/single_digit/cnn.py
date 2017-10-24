@@ -51,7 +51,7 @@ svhn = SVHN("../../res/cropped", n_classes, use_extra=True, gray=False, normaliz
 
 # Create the model
 X = tf.placeholder(tf.float32, [None, image_size, image_size, channels])
-Y = tf.placeholder(tf.float32, [None, n_classes])
+Y = tf.placeholder(tf.int32, [None, n_classes])
 
 
 # Weights & Biases
