@@ -11,11 +11,22 @@ iterations = 10000
 batch_size = 50
 display_step = 1000
 
+# Use of extra dataset
+use_extra = True
+
+# Use only one of the below flags as true
+plain = True
+normalized = False
+gray = False
+
+# Data Directory where the processed data reside
+data_dir = "D:/res/processed/"
+
 # Network Parameters
 channels = 3
 image_size = 64
 n_classes = 11
-n_labels = 2
+n_labels = 3
 dropout = 0.85
 depth_1 = 32
 depth_2 = 32
@@ -122,8 +133,9 @@ def cnn(x):
 
     logit1 = tf.matmul(dropout_layer, weights["digit1"]) + biases["digit1"]
     logit2 = tf.matmul(dropout_layer, weights["digit2"]) + biases["digit2"]
+    logit3 = tf.matmul(dropout_layer, weights["digit3"]) + biases["digit3"]
 
-    return logit1, logit2, keep_prob_constant
+    return logit1, logit2, logit3, keep_prob_constant
 
 
 def visualize_results(train_accuracies, train_losses, test_accuracies, test_losses, test_iterations, train_examples):
@@ -166,32 +178,54 @@ def visualize_results(train_accuracies, train_losses, test_accuracies, test_loss
     plt.show()
 
 
+def load_data():
+    if normalized:
+        directory = "normalized"
+    elif gray:
+        directory = "gray"
+    else:
+        directory = "plain"
+
+    directory = directory + "_" + str(n_labels)
+
+    svhn = SVHNMulti(data_dir + directory)
+    train_data, train_labels = svhn.load_data("train")
+    test_data, test_labels = svhn.load_data("test")
+
+    if use_extra:
+        extra_data, extra_labels = svhn.load_data("extra")
+        train_data = np.append(train_data, extra_data, axis=0)
+        train_labels = np.append(train_labels, extra_labels, axis=0)
+
+    return train_data, train_labels, test_data, test_labels
+
+
 def main():
     # Load data
-    svhn = SVHNMulti("../../res/processed/normalized")
-    train_data, train_labels = svhn.load_data("train")
+    train_data, train_labels, test_data, test_labels = load_data()
     train_examples = len(train_data)
+    test_examples = len(test_data)
 
     # Build the graph for the deep net
-    digit1, digit2, keep_prob = cnn(X)
+    digit1, digit2, digit3, keep_prob = cnn(X)
 
     # Cost is composed by adding all losses of each and every digit
     loss1 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y[:, 0, :], logits=digit1))
     loss2 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y[:, 1, :], logits=digit2))
-    cost = loss1 + loss2
+    loss3 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y[:, 2, :], logits=digit3))
+    cost = loss1 + loss2 + loss3
 
     # Set up optimizer
     optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
     # Stack predictions as one large array
-    prediction = tf.stack([tf.nn.softmax(digit1),
-                           tf.nn.softmax(digit2)])
+    prediction = tf.stack([digit1, digit2, digit3])
 
     # Transpose prediction array as needed
     prediction = tf.transpose(prediction, [1, 0, 2])
 
     # Stack and transpose actual labels, in the same way as predictions
-    actual = tf.transpose(tf.stack([Y[:, 0, :], Y[:, 1, :]]), [1, 0, 2])
+    actual = tf.transpose(tf.stack([Y[:, 0, :], Y[:, 1, :], Y[:, 2, :]]), [1, 0, 2])
 
     # Compute equality vectors
     correct_prediction = tf.equal(tf.argmax(prediction, 2), tf.argmax(actual, 2))
@@ -248,9 +282,6 @@ def main():
                 train_losses.append(_cost)
 
         # Test the model by measuring it's accuracy
-        test_data, test_labels = svhn.load_data("test")
-        test_examples = len(test_data)
-
         test_iterations = test_examples // batch_size + 1
         for i in range(test_iterations):
             batch_x, batch_y = (test_data[i * batch_size:(i + 1) * batch_size],
