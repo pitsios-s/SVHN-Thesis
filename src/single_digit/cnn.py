@@ -12,14 +12,15 @@ batch_size = 50
 display_step = 1000
 
 # Network Parameters
-channels = 3
+channels = 1
 image_size = 32
 n_classes = 10
-dropout = 0.85
+dropout = 0.8
+depth_1 = 16
+depth_2 = 32
+depth_3 = 64
+depth_4 = 128
 hidden = 128
-depth_1 = 32
-depth_2 = 64
-depth_3 = 128
 filter_size = 5
 normalization_offset = 0.0  # beta
 normalization_scale = 1.0  # gamma
@@ -47,7 +48,7 @@ def avg_pool(x):
 
 
 # Load data
-svhn = SVHN("../../res/cropped", n_classes, use_extra=True, gray=False, normalize=False)
+svhn = SVHN("../../res/cropped", n_classes, use_extra=True, gray=True, normalize=False)
 
 # Create the model
 X = tf.placeholder(tf.float32, [None, image_size, image_size, channels])
@@ -59,16 +60,18 @@ weights = {
     "layer1": weight_variable([filter_size, filter_size, channels, depth_1]),
     "layer2": weight_variable([filter_size, filter_size, depth_1, depth_2]),
     "layer3": weight_variable([filter_size, filter_size, depth_2, depth_3]),
-    "layer4": weight_variable([image_size // 8 * image_size // 8 * depth_3, hidden]),
-    "layer5": weight_variable([hidden, n_classes])
+    "layer4": weight_variable([filter_size, filter_size, depth_3, depth_4]),
+    "layer5": weight_variable([image_size // 16 * image_size // 16 * depth_4, hidden]),
+    "layer6": weight_variable([hidden, n_classes])
 }
 
 biases = {
     "layer1": bias_variable([depth_1]),
     "layer2": bias_variable([depth_2]),
     "layer3": bias_variable([depth_3]),
-    "layer4": bias_variable([hidden]),
-    "layer5": bias_variable([n_classes])
+    "layer4": bias_variable([depth_4]),
+    "layer5": bias_variable([hidden]),
+    "layer6": bias_variable([n_classes])
 }
 
 
@@ -98,16 +101,21 @@ def cnn(x):
     relu3 = tf.nn.relu(convolution3 + biases["layer3"])
     maxpool3 = avg_pool(relu3)
 
+    # Convolution 4 -> RELU -> Max Pool
+    convolution4 = convolution(maxpool3, weights["layer4"])
+    relu4 = tf.nn.relu(convolution4 + biases["layer4"])
+    maxpool4 = avg_pool(relu4)
+
     # Fully Connected Layer
-    shape = maxpool3.get_shape().as_list()
-    reshape = tf.reshape(maxpool3, [-1, shape[1] * shape[2] * shape[3]])
-    fc = tf.nn.relu(tf.matmul(reshape, weights["layer4"]) + biases["layer4"])
+    shape = maxpool4.get_shape().as_list()
+    reshape = tf.reshape(maxpool4, [-1, shape[1] * shape[2] * shape[3]])
+    fc = tf.nn.relu(tf.matmul(reshape, weights["layer5"]) + biases["layer5"])
 
     # Dropout Layer
     keep_prob_constant = tf.placeholder(tf.float32)
     dropout_layer = tf.nn.dropout(fc, keep_prob_constant)
 
-    return tf.matmul(dropout_layer, weights["layer5"]) + biases["layer5"], keep_prob_constant
+    return tf.matmul(dropout_layer, weights["layer6"]) + biases["layer6"], keep_prob_constant
 
 
 def visualize_results(train_accuracies, train_losses, test_accuracies, test_losses, test_iterations):
