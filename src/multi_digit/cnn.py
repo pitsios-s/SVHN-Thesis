@@ -7,7 +7,7 @@ from src.multi_digit.svhn import SVHNMulti
 
 # Parameters
 learning_rate = 0.001
-iterations = 10000
+iterations = 20000
 batch_size = 50
 display_step = 1000
 
@@ -15,24 +15,25 @@ display_step = 1000
 use_extra = True
 
 # Use only one of the below flags as true
-plain = True
+plain = False
 normalized = False
-gray = False
+gray = True
 
 # Data Directory where the processed data reside
 data_dir = "D:/res/processed/"
 
 # Network Parameters
-channels = 3
+channels = 1
 image_size = 64
 n_classes = 11
-n_labels = 3
-dropout = 0.85
-depth_1 = 32
+n_labels = 5
+dropout = 0.80
+depth_1 = 16
 depth_2 = 32
 depth_3 = 64
 depth_4 = 128
-hidden = 256
+depth_5 = 128
+hidden = 128
 filter_size = 5
 normalization_offset = 0.0  # beta
 normalization_scale = 1.0  # gamma
@@ -69,7 +70,8 @@ weights = {
     "layer2": weight_variable([filter_size, filter_size, depth_1, depth_2]),
     "layer3": weight_variable([filter_size, filter_size, depth_2, depth_3]),
     "layer4": weight_variable([filter_size, filter_size, depth_3, depth_4]),
-    "layer5": weight_variable([image_size // 16 * image_size // 16 * depth_4, hidden]),
+    "layer5": weight_variable([filter_size, filter_size, depth_4, depth_5]),
+    "layer6": weight_variable([image_size // 32 * image_size // 32 * depth_5, hidden]),
     "digit1": weight_variable([hidden, n_classes]),
     "digit2": weight_variable([hidden, n_classes]),
     "digit3": weight_variable([hidden, n_classes]),
@@ -82,7 +84,8 @@ biases = {
     "layer2": bias_variable([depth_2]),
     "layer3": bias_variable([depth_3]),
     "layer4": bias_variable([depth_4]),
-    "layer5": bias_variable([hidden]),
+    "layer5": bias_variable([depth_5]),
+    "layer6": bias_variable([hidden]),
     "digit1": bias_variable([n_classes]),
     "digit2": bias_variable([n_classes]),
     "digit3": bias_variable([n_classes]),
@@ -122,10 +125,15 @@ def cnn(x):
     relu4 = tf.nn.relu(convolution4 + biases["layer4"])
     maxpool4 = avg_pool(relu4)
 
+    # Convolution 5 -> RELU -> Max Pool
+    convolution5 = convolution(maxpool4, weights["layer5"])
+    relu5 = tf.nn.relu(convolution5 + biases["layer5"])
+    maxpool5 = avg_pool(relu5)
+
     # Fully Connected Layer
-    shape = maxpool4.get_shape().as_list()
-    reshape = tf.reshape(maxpool4, [-1, shape[1] * shape[2] * shape[3]])
-    fc = tf.nn.relu(tf.matmul(reshape, weights["layer5"]) + biases["layer5"])
+    shape = maxpool5.get_shape().as_list()
+    reshape = tf.reshape(maxpool5, [-1, shape[1] * shape[2] * shape[3]])
+    fc = tf.nn.relu(tf.matmul(reshape, weights["layer6"]) + biases["layer6"])
 
     # Dropout Layer
     keep_prob_constant = tf.placeholder(tf.float32)
@@ -134,8 +142,10 @@ def cnn(x):
     logit1 = tf.matmul(dropout_layer, weights["digit1"]) + biases["digit1"]
     logit2 = tf.matmul(dropout_layer, weights["digit2"]) + biases["digit2"]
     logit3 = tf.matmul(dropout_layer, weights["digit3"]) + biases["digit3"]
+    logit4 = tf.matmul(dropout_layer, weights["digit4"]) + biases["digit4"]
+    logit5 = tf.matmul(dropout_layer, weights["digit5"]) + biases["digit5"]
 
-    return logit1, logit2, logit3, keep_prob_constant
+    return logit1, logit2, logit3, logit4, logit5, keep_prob_constant
 
 
 def visualize_results(train_accuracies, train_losses, test_accuracies, test_losses, test_iterations, train_examples):
@@ -207,25 +217,28 @@ def main():
     test_examples = len(test_data)
 
     # Build the graph for the deep net
-    digit1, digit2, digit3, keep_prob = cnn(X)
+    digit1, digit2, digit3, digit4, digit5, keep_prob = cnn(X)
 
     # Cost is composed by adding all losses of each and every digit
     loss1 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y[:, 0, :], logits=digit1))
     loss2 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y[:, 1, :], logits=digit2))
     loss3 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y[:, 2, :], logits=digit3))
-    cost = loss1 + loss2 + loss3
+    loss4 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y[:, 3, :], logits=digit4))
+    loss5 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y[:, 4, :], logits=digit5))
+
+    cost = loss1 + loss2 + loss3 + loss4 + loss5
 
     # Set up optimizer
     optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
     # Stack predictions as one large array
-    prediction = tf.stack([digit1, digit2, digit3])
+    prediction = tf.stack([digit1, digit2, digit3, digit4, digit5])
 
     # Transpose prediction array as needed
     prediction = tf.transpose(prediction, [1, 0, 2])
 
     # Stack and transpose actual labels, in the same way as predictions
-    actual = tf.transpose(tf.stack([Y[:, 0, :], Y[:, 1, :], Y[:, 2, :]]), [1, 0, 2])
+    actual = tf.transpose(tf.stack([Y[:, 0, :], Y[:, 1, :], Y[:, 2, :], Y[:, 3, :], Y[:, 4, :]]), [1, 0, 2])
 
     # Compute equality vectors
     correct_prediction = tf.equal(tf.argmax(prediction, 2), tf.argmax(actual, 2))
@@ -274,8 +287,8 @@ def main():
                 _accuracy_single, _accuracy_multi, _cost = sess.run([accuracy_single, accuracy_multi, cost],
                                                                     feed_dict={X: batch_x, Y: batch_y, keep_prob: 1.0})
                 print("Step: {0:6d}, "
-                      "Training Accuracy Whole: {1:5f}, "
-                      "Training Accuracy Part: {2:5f}, "
+                      "Training Accuracy Multi: {1:5f}, "
+                      "Training Accuracy Single: {2:5f}, "
                       "Batch Loss: {3:5f}".format(i + 1, _accuracy_multi, _accuracy_single, _cost))
 
                 train_accuracies.append(_accuracy_multi)
@@ -291,8 +304,8 @@ def main():
             test_accuracies_single.append(_accuracy_single)
             test_accuracies_multi.append(_accuracy_multi)
             test_losses.append(_cost)
-        print("Mean Test Accuracy Part: {0:5f}, "
-              "Mean Test Accuracy Whole: {1:5f}, "
+        print("Mean Test Accuracy Single: {0:5f}, "
+              "Mean Test Accuracy Multi: {1:5f}, "
               "Mean Test Loss: {2:5f}".format(np.mean(test_accuracies_single),
                                               np.mean(test_accuracies_multi),
                                               np.mean(test_losses)))
