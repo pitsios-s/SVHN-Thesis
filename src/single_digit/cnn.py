@@ -26,25 +26,29 @@ normalization_offset = 0.0  # beta
 normalization_scale = 1.0  # gamma
 normalization_epsilon = 0.001  # epsilon
 
-
-def weight_variable(shape):
-    return tf.Variable(tf.truncated_normal(shape, stddev=0.1))
-
-
-def bias_variable(shape):
-    return tf.Variable(tf.constant(1.0, shape=shape))
+# Tensorboard parameters
+train_log_dir = "../../logs/single/train"
+test_log_dir = "../../logs/single/test"
 
 
-def convolution(x, w):
-    return tf.nn.conv2d(x, w, strides=[1, 1, 1, 1], padding="SAME")
+def weight_variable(shape, name=None):
+    return tf.Variable(tf.truncated_normal(shape, stddev=0.1), name=name)
 
 
-def max_pool(x):
-    return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
+def bias_variable(shape, name=None):
+    return tf.Variable(tf.constant(1.0, shape=shape), name=name)
 
 
-def avg_pool(x):
-    return tf.nn.avg_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
+def convolution(x, w, name=None):
+    return tf.nn.conv2d(x, w, strides=[1, 1, 1, 1], padding="SAME", name=name)
+
+
+def max_pool(x, name=None):
+    return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME", name=name)
+
+
+def avg_pool(x, name=None):
+    return tf.nn.avg_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME", name=name)
 
 
 # Load data
@@ -57,21 +61,21 @@ Y = tf.placeholder(tf.int32, [None, n_classes])
 
 # Weights & Biases
 weights = {
-    "layer1": weight_variable([filter_size, filter_size, channels, depth_1]),
-    "layer2": weight_variable([filter_size, filter_size, depth_1, depth_2]),
-    "layer3": weight_variable([filter_size, filter_size, depth_2, depth_3]),
-    "layer4": weight_variable([filter_size, filter_size, depth_3, depth_4]),
-    "layer5": weight_variable([image_size // 16 * image_size // 16 * depth_4, hidden]),
-    "layer6": weight_variable([hidden, n_classes])
+    "layer1": weight_variable([filter_size, filter_size, channels, depth_1], name="weight_layer_1"),
+    "layer2": weight_variable([filter_size, filter_size, depth_1, depth_2], name="weight_layer_2"),
+    "layer3": weight_variable([filter_size, filter_size, depth_2, depth_3], name="weight_layer_3"),
+    "layer4": weight_variable([filter_size, filter_size, depth_3, depth_4], name="weight_layer_4"),
+    "layer5": weight_variable([image_size // 16 * image_size // 16 * depth_4, hidden], name="weight_dropout"),
+    "layer6": weight_variable([hidden, n_classes], name="weight_output")
 }
 
 biases = {
-    "layer1": bias_variable([depth_1]),
-    "layer2": bias_variable([depth_2]),
-    "layer3": bias_variable([depth_3]),
-    "layer4": bias_variable([depth_4]),
-    "layer5": bias_variable([hidden]),
-    "layer6": bias_variable([n_classes])
+    "layer1": bias_variable([depth_1], name="bias_layer_1"),
+    "layer2": bias_variable([depth_2], name="bias_layer_2"),
+    "layer3": bias_variable([depth_3], name="bias_layer_3"),
+    "layer4": bias_variable([depth_4], name="bias_layer_4"),
+    "layer5": bias_variable([hidden], name="bias_dropout"),
+    "layer6": bias_variable([n_classes], name="bias_output")
 }
 
 
@@ -86,34 +90,40 @@ def cnn(x):
     # Batch normalization
     x = normalize(x)
 
-    # Convolution 1 -> RELU -> Max Pool
-    convolution1 = convolution(x, weights["layer1"])
-    relu1 = tf.nn.relu(convolution1 + biases["layer1"])
-    maxpool1 = avg_pool(relu1)
+    # Convolution 1 -> RELU -> Pool
+    with tf.name_scope("convolution_layer_1"):
+        convolution1 = convolution(x, weights["layer1"], name="conv_1")
+        relu1 = tf.nn.relu(convolution1 + biases["layer1"], name="relu_1")
+        pool1 = avg_pool(relu1, name="avg_pool_1")
 
-    # Convolution 2 -> RELU -> Max Pool
-    convolution2 = convolution(maxpool1, weights["layer2"])
-    relu2 = tf.nn.relu(convolution2 + biases["layer2"])
-    maxpool2 = avg_pool(relu2)
+    # Convolution 2 -> RELU -> Pool
+    with tf.name_scope("convolution_layer_2"):
+        convolution2 = convolution(pool1, weights["layer2"], name="conv_2")
+        relu2 = tf.nn.relu(convolution2 + biases["layer2"], name="relu_2")
+        pool2 = avg_pool(relu2, name="avg_pool_2")
 
-    # Convolution 3 -> RELU -> Max Pool
-    convolution3 = convolution(maxpool2, weights["layer3"])
-    relu3 = tf.nn.relu(convolution3 + biases["layer3"])
-    maxpool3 = avg_pool(relu3)
+    # Convolution 3 -> RELU -> Pool
+    with tf.name_scope("convolution_layer_3"):
+        convolution3 = convolution(pool2, weights["layer3"], name="conv_3")
+        relu3 = tf.nn.relu(convolution3 + biases["layer3"], name="relu_3")
+        pool3 = avg_pool(relu3, name="avg_pool_3")
 
-    # Convolution 4 -> RELU -> Max Pool
-    convolution4 = convolution(maxpool3, weights["layer4"])
-    relu4 = tf.nn.relu(convolution4 + biases["layer4"])
-    maxpool4 = avg_pool(relu4)
+    # Convolution 4 -> RELU -> Pool
+    with tf.name_scope("convolution_layer_4"):
+        convolution4 = convolution(pool3, weights["layer4"], name="conv_4")
+        relu4 = tf.nn.relu(convolution4 + biases["layer4"], name="relu_4")
+        pool4 = avg_pool(relu4, name="avg_pool_4")
 
     # Fully Connected Layer
-    shape = maxpool4.get_shape().as_list()
-    reshape = tf.reshape(maxpool4, [-1, shape[1] * shape[2] * shape[3]])
-    fc = tf.nn.relu(tf.matmul(reshape, weights["layer5"]) + biases["layer5"])
+    with tf.name_scope("fully_connected_layer"):
+        shape = pool4.get_shape().as_list()
+        reshape = tf.reshape(pool4, [-1, shape[1] * shape[2] * shape[3]])
+        fc = tf.nn.relu(tf.matmul(reshape, weights["layer5"]) + biases["layer5"])
 
     # Dropout Layer
-    keep_prob_constant = tf.placeholder(tf.float32)
-    dropout_layer = tf.nn.dropout(fc, keep_prob_constant)
+    with tf.name_scope("dropout"):
+        keep_prob_constant = tf.placeholder(tf.float32)
+        dropout_layer = tf.nn.dropout(fc, keep_prob_constant)
 
     return tf.matmul(dropout_layer, weights["layer6"]) + biases["layer6"], keep_prob_constant
 
@@ -158,12 +168,28 @@ def visualize_results(train_accuracies, train_losses, test_accuracies, test_loss
     plt.show()
 
 
+def clear_old_logs():
+    """ Clears any previous log files """
+    if tf.gfile.Exists(train_log_dir):
+        tf.gfile.DeleteRecursively(train_log_dir)
+    tf.gfile.MakeDirs(train_log_dir)
+
+    if tf.gfile.Exists(test_log_dir):
+        tf.gfile.DeleteRecursively(test_log_dir)
+    tf.gfile.MakeDirs(test_log_dir)
+
+
 def main():
+    # Clear existing logs
+    clear_old_logs()
+
     # Build the graph for the deep net
     y_conv, keep_prob = cnn(X)
 
     # The cost function
-    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y, logits=y_conv))
+    with tf.name_scope("loss"):
+        cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y, logits=y_conv))
+    tf.summary.scalar("loss", cost)
 
     # Optimizer used for training model
     optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
@@ -171,26 +197,29 @@ def main():
     # Retrieve the indices of the best 3 predictions
     _, top_k_indices = tf.nn.top_k(y_conv, k=3)
 
-    # Compare each of the best 3 predictions with the actual labels
-    prediction_top_1 = tf.equal(top_k_indices[:, 0], tf.argmax(Y, 1, output_type=tf.int32))
-    prediction_top_2 = tf.equal(top_k_indices[:, 1], tf.argmax(Y, 1, output_type=tf.int32))
-    prediction_top_3 = tf.equal(top_k_indices[:, 2], tf.argmax(Y, 1, output_type=tf.int32))
-
     # Calculate accuracies for top-1, top-2 and top-3 predictions
-    accuracy_top_1 = tf.reduce_mean(tf.cast(prediction_top_1, tf.float32))
-    accuracy_top_2 = tf.reduce_mean(tf.cast(tf.reduce_any(
-        tf.stack([prediction_top_1, prediction_top_2]), axis=0), tf.float32))
-    accuracy_top_3 = tf.reduce_mean(tf.cast(tf.reduce_any(
-        tf.stack([prediction_top_1, prediction_top_2, prediction_top_3]), axis=0), tf.float32))
+    with tf.name_scope("accuracy_top_1"):
+        with tf.name_scope("prediction_top_1"):
+            prediction_top_1 = tf.equal(top_k_indices[:, 0], tf.argmax(Y, 1, output_type=tf.int32))
+        with tf.name_scope("accuracy_top_1"):
+            accuracy_top_1 = tf.reduce_mean(tf.cast(prediction_top_1, tf.float32))
+    tf.summary.scalar("accuracy_top_1", accuracy_top_1)
 
-    # Store scalars for accuracy and loss
-    tf.summary.scalar('accuracy', accuracy_top_1)
-    tf.summary.scalar('loss', cost)
+    with tf.name_scope("accuracy_top_2"):
+        with tf.name_scope("prediction_top_2"):
+            prediction_top_2 = tf.equal(top_k_indices[:, 1], tf.argmax(Y, 1, output_type=tf.int32))
+        with tf.name_scope("accuracy_top_2"):
+            accuracy_top_2 = tf.reduce_mean(tf.cast(tf.reduce_any(
+                tf.stack([prediction_top_1, prediction_top_2]), axis=0), tf.float32))
+    tf.summary.scalar("accuracy_top_2", accuracy_top_2)
 
-    # Writers for storing tensorboard statistics
-    merged = tf.summary.merge_all()
-    train_writer = tf.summary.FileWriter("../../logs/train")
-    test_writer = tf.summary.FileWriter("../../logs/test")
+    with tf.name_scope("accuracy_top_3"):
+        with tf.name_scope("prediction_top_3"):
+            prediction_top_3 = tf.equal(top_k_indices[:, 2], tf.argmax(Y, 1, output_type=tf.int32))
+        with tf.name_scope("accuracy_top_3"):
+            accuracy_top_3 = tf.reduce_mean(tf.cast(tf.reduce_any(
+                tf.stack([prediction_top_1, prediction_top_2, prediction_top_3]), axis=0), tf.float32))
+    tf.summary.scalar("accuracy_top_3", accuracy_top_3)
 
     # Start counting execution time
     start_time = time.time()
@@ -198,6 +227,11 @@ def main():
     with tf.Session() as sess:
         # Initialize Tensorflow variables
         sess.run(tf.global_variables_initializer())
+
+        # Writers for storing tensorboard statistics
+        merged = tf.summary.merge_all()
+        train_writer = tf.summary.FileWriter(train_log_dir, sess.graph)
+        test_writer = tf.summary.FileWriter(test_log_dir)
 
         # Variable useful for batch creation
         start = 0
