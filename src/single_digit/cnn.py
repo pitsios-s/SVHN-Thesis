@@ -125,7 +125,11 @@ def cnn(x):
         keep_prob_constant = tf.placeholder(tf.float32)
         dropout_layer = tf.nn.dropout(fc, keep_prob_constant)
 
-    return tf.matmul(dropout_layer, weights["layer6"]) + biases["layer6"], keep_prob_constant
+    # Output Layer
+    with tf.name_scope("output"):
+        output = tf.matmul(dropout_layer, weights["layer6"]) + biases["layer6"]
+
+    return output, keep_prob_constant
 
 
 def visualize_results(train_accuracies, train_losses, test_accuracies, test_losses, test_iterations):

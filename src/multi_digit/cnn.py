@@ -150,11 +150,13 @@ def cnn(x):
         keep_prob_constant = tf.placeholder(tf.float32)
         dropout_layer = tf.nn.dropout(fc, keep_prob_constant)
 
-    logit1 = tf.matmul(dropout_layer, weights["digit1"]) + biases["digit1"]
-    logit2 = tf.matmul(dropout_layer, weights["digit2"]) + biases["digit2"]
-    logit3 = tf.matmul(dropout_layer, weights["digit3"]) + biases["digit3"]
-    logit4 = tf.matmul(dropout_layer, weights["digit4"]) + biases["digit4"]
-    logit5 = tf.matmul(dropout_layer, weights["digit5"]) + biases["digit5"]
+    # Output Layer
+    with tf.name_scope("output"):
+        logit1 = tf.matmul(dropout_layer, weights["digit1"]) + biases["digit1"]
+        logit2 = tf.matmul(dropout_layer, weights["digit2"]) + biases["digit2"]
+        logit3 = tf.matmul(dropout_layer, weights["digit3"]) + biases["digit3"]
+        logit4 = tf.matmul(dropout_layer, weights["digit4"]) + biases["digit4"]
+        logit5 = tf.matmul(dropout_layer, weights["digit5"]) + biases["digit5"]
 
     return logit1, logit2, logit3, logit4, logit5, keep_prob_constant
 
