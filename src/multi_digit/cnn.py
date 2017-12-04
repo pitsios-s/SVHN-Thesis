@@ -20,7 +20,7 @@ normalized = False
 gray = True
 
 # Data Directory where the processed data reside
-data_dir = "D:/res/processed/"
+data_dir = "../../res/processed/"
 
 # Network Parameters
 channels = 1

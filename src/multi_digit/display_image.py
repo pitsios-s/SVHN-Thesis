@@ -8,7 +8,7 @@ index = 0
 # Read file
 h5_plain = h5py.File("../../res/processed/plain_5/train.h5")
 h5_normalized = h5py.File("../../res/processed/normalized_5/train.h5")
-h5_gray = h5py.File("../../res/processed/gray_%/train.h5")
+h5_gray = h5py.File("../../res/processed/gray_5/train.h5")
 
 # Load image
 image_plain = h5_plain["train_dataset"][index]

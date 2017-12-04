@@ -19,7 +19,7 @@ normalization_offset = 0.0  # beta
 normalization_scale = 1.0  # gamma
 normalization_epsilon = 0.001  # epsilon
 
-svhn = SVHN("../res/cropped", n_classes, use_extra=True, gray=False)
+svhn = SVHN("../../res/cropped", n_classes, use_extra=True, gray=False)
 
 
 # tf Graph input
