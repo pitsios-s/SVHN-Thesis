@@ -57,3 +57,6 @@ When cnn.py scripts runs for either case, it creates a directory named logs, whi
 For the cropped digits format we were able to achieve an accuracy of 95.74%. 
 
 For the full numbers format we used to different accuracies. The accuracy of predicting correctly any digits on an image(single accuracy), and an accuracy of predicting all numbers correctly at the same time(multi accuracy). For the single accuracy we scored a high of 96.87% and for the multi accuracy a 87.68%. Most approaches and implementation use the single accuracy as a metric. We just provided the multi accuracy as another useful indicator. An interesting comparison of results of our achievement against other published papers, can be found [here](http://rodrigob.github.io/are_we_there_yet/build/classification_datasets_results.html)
+
+## Open Issues
+An important thing to note is that the implementation assumes that the whole dataset can fit in memory while being processed by the neural network. This would typically require about 20GB of RAM. For the multi digit problem this can be addressed easily, since processed data are stored in h5 files, which can be read in chunks, exact like array slicing. For the single digit case however, this need additional implementation, which will be addressed in the future.
