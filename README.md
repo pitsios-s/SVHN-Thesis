@@ -49,3 +49,11 @@ Cropped directory should contain the 3 .mat files. Every folder under the **orig
   * `cnn.py` CNN implementation for recognizing and predicting numbers in multi-digit images.
   
 **Note**: While the script `svhn.py` is called from `cnn.py` to load the images in cropped digits problem, for the case of multi-digit is different. There, the `svhn.py` is an independent script which must be run before running the CNN, so that it processes the raw, variable resolution images. Its constructor accepts a series a parameters to determine things like maximum acceptable digit length, grayscaling, normalization, etc. It also accepts the output directory path, which must be placed under `res/processed`. For instance `res/processed/gray_4`, for a processing that keeps only images with up to 4 digits, converted to grayscale.
+
+#### Logs Directory
+When cnn.py scripts runs for either case, it creates a directory named logs, which stores execution logs needed for [TensorBoard](https://www.tensorflow.org/get_started/summaries_and_tensorboard). TensorBoard can be started by issuing the command `tensorboard --log-dir=logs/single` for logs regarding single digits problem, or `tensorboard --log-dir=logs/multi` for multi digit. TensorBoard can be accessed from `localhost:6006`.
+
+## Results
+For the cropped digits format we were able to achieve an accuracy of 95.74%. 
+
+For the full numbers format we used to different accuracies. The accuracy of predicting correctly any digits on an image(single accuracy), and an accuracy of predicting all numbers correctly at the same time(multi accuracy). For the single accuracy we scored a high of 96.87% and for the multi accuracy a 87.68%. Most approaches and implementation use the single accuracy as a metric. We just provided the multi accuracy as another useful indicator. An interesting comparison of results of our achievement against other published papers, can be found [here](http://rodrigob.github.io/are_we_there_yet/build/classification_datasets_results.html)
