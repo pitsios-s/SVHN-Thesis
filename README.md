@@ -41,3 +41,11 @@ Cropped directory should contain the 3 .mat files. Every folder under the **orig
   * `mlp.py` A Multi Layer Perceptron baseline approach for predicting the digit on the image. Not big emphasis was given in this approach.
   * `cnn.py` An implementation of Convolutional Neural Networks for predicting the number on an image. Note that the current parameters used have been selected after running a lot of different experiments. This scripts just loads the data, trains the model on-the-fly and evaluates it with the test set.
   * `svhn.py` A class that contains all the necessary functionality for loading the data from the .mat files, load them into numpy arrays and then feed them to the neural network.
+
+* multi_digit: Contains all the files needed to run a CNN for the full numbers format
+  * `digit_statistics.py` An independent script for creating a plot regarding the distribution of digit lengths across all different images in each subset (train, test, extra)
+  * `display_image.py` An independent script responsible for loading a given house number image and visualize it in 4 different formats (raw, gray-scale, normalized and gray-scale normalized)
+  * `svhn.py` An independent script for reading raw images, processes them, crops them around the bounding boxes of every digit and resize them to 64x64 pixels.
+  * `cnn.py` CNN implementation for recognizing and predicting numbers in multi-digit images.
+  
+**Note**: While the script `svhn.py` is called from `cnn.py` to load the images in cropped digits problem, for the case of multi-digit is different. There, the `svhn.py` is an independent script which must be run before running the CNN, so that it processes the raw, variable resolution images. Its constructor accepts a series a parameters to determine things like maximum acceptable digit length, grayscaling, normalization, etc. It also accepts the output directory path, which must be placed under `res/processed`. For instance `res/processed/gray_4`, for a processing that keeps only images with up to 4 digits, converted to grayscale.
