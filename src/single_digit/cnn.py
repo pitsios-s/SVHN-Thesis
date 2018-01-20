@@ -2,6 +2,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from sklearn.metrics import confusion_matrix
 
 from src.single_digit.svhn import SVHN
 
@@ -278,17 +279,30 @@ def main():
 
         # Test the model by measuring it's accuracy
         test_iterations = svhn.test_examples // batch_size + 1
+
+        # An array to store the actual labels of the images in the test set.
+        actual_labels = []
+
+        # An array to store the predicted labels of the images in the test set.
+        predicted_labels = []
+
         for i in range(test_iterations):
             batch_x, batch_y = (svhn.test_data[i * batch_size:(i + 1) * batch_size],
                                 svhn.test_labels[i * batch_size:(i + 1) * batch_size])
-            _accuracy_top_1, _accuracy_top_2, _accuracy_top_3, _cost, _summary = \
-                sess.run([accuracy_top_1, accuracy_top_2, accuracy_top_3, cost, merged],
+            _accuracy_top_1, _accuracy_top_2, _accuracy_top_3, _cost, _summary, _predictions = \
+                sess.run([accuracy_top_1, accuracy_top_2, accuracy_top_3, cost, merged, top_k_indices],
                          feed_dict={X: batch_x, Y: batch_y, keep_prob: 1.0})
+
+            actual_labels.extend(sess.run(tf.argmax(batch_y, 1, output_type=tf.int32)))
+            predicted_labels.extend(_predictions[:, 0])
+
             test_accuracies_top_1.append(_accuracy_top_1)
             test_accuracies_top_2.append(_accuracy_top_2)
             test_accuracies_top_3.append(_accuracy_top_3)
             test_losses.append(_cost)
+
             test_writer.add_summary(_summary, i)
+
         print("Mean Test Accuracy (Top 1): {0:5f}, "
               "Mean Test Accuracy (Top 2): {1:5f}, "
               "Mean Test Accuracy (Top 3): {2:5f}, "
@@ -300,6 +314,9 @@ def main():
         # print execution time
         print("Execution time in seconds: " + str(time.time() - start_time))
         train_writer.close()
+
+    # Display a confusion matrix for actual vs predicted
+    print(confusion_matrix(actual_labels, predicted_labels, labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]))
 
     visualize_results(train_accuracies, train_losses, test_accuracies_top_1, test_losses, test_iterations)
 
