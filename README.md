@@ -17,6 +17,7 @@ For the code to run, the following libraries are needed which can be installed v
 * Matplotlib: `pip install matplotlib`
 * H5py: `pip install h5py`
 * Pillow: `pip install Pillow`
+* scikit-learn: `pip install scikit-learn`
 * Tensorflow: `pip install tensorflow` For CPU only, or `pip install tensorflow-gpu` for TensorFlow with GPU support (also needs CUDA and cuDNN installation)
 
 ## Project Structure
